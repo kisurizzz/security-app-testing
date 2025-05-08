@@ -1,0 +1,6 @@
+10016	IGNORE	(Web Browser XSS Protection Not Enabled)
+10020	IGNORE	(X-Frame-Options Header)
+10021	IGNORE	(X-Content-Type-Options Header Missing)
+10038	IGNORE	(Content Security Policy (CSP) Header Not Set)
+40018	WARN	(SQL Injection)
+90022	WARN	(Application Error Disclosure) 

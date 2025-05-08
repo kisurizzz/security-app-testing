@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .search-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 1rem;
+        }
+        .search-form {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .search-input {
+            flex: 1;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .search-button {
+            padding: 0.5rem 1rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .search-button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .result-item {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .no-results {
+            text-align: center;
+            color: #666;
+            padding: 2rem;
+        }
+        nav {
+            padding: 1rem;
+            background: #f8f9fa;
+            margin-bottom: 2rem;
+        }
+        nav a {
+            color: #007bff;
+            text-decoration: none;
+            margin-right: 1rem;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="search-container">
+        <nav>
+            <a href="{{ url_for('main.home') }}">Home</a>
+            <a href="{{ url_for('main.login') }}">Login</a>
+        </nav>
+        
+        <form class="search-form" method="GET" action="{{ url_for('main.search') }}">
+            <input 
+                type="text" 
+                name="q" 
+                class="search-input" 
+                placeholder="Enter your search query..."
+                value="{{ query }}"
+                required
+            >
+            <button type="submit" class="search-button">Search</button>
+        </form>
+
+        {% if query %}
+        <div class="results">
+            {% if results %}
+                <h2>Search Results for: {{ query }}</h2>
+                {% for result in results %}
+                <div class="result-item">
+                    <h3>{{ result.title }}</h3>
+                    <p>{{ result.description }}</p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-results">
+                    <h2>No results found for: {{ query }}</h2>
+                    <p>Try different keywords or check your spelling.</p>
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 
