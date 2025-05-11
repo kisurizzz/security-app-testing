@@ -53,7 +53,13 @@ jobs:
       run: |
         # Install required dependencies
         sudo apt-get update
-        sudo apt-get install -y unzip default-jre
+        sudo apt-get install -y unzip
+        
+        # Setup Java 17
+        sudo apt-get install -y software-properties-common
+        sudo add-apt-repository -y ppa:linuxuprising/java
+        sudo apt-get update
+        sudo apt-get install -y openjdk-17-jdk
         
         # Download and setup scanner
         wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
@@ -68,6 +74,8 @@ jobs:
         
         # Verify installation
         echo "Verifying sonar-scanner installation..."
+        echo "Java version:"
+        java -version
         ls -l /opt/sonar-scanner/bin/sonar-scanner
         /opt/sonar-scanner/bin/sonar-scanner --version
         
@@ -76,17 +84,19 @@ jobs:
       env:
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        JAVA_HOME: /usr/lib/jvm/default-java
+        JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
       run: |
         # Debug environment
         echo "Current PATH: $PATH"
         echo "Current directory: $(pwd)"
+        echo "Java version:"
+        java -version
         ls -la /opt/sonar-scanner/bin
         
         # Make the scanner script executable
         chmod +x /opt/sonar-scanner/bin/sonar-scanner
         
-        # Run with bash explicitly (no backslashes for line continuation)
+        # Run with bash explicitly
         bash /opt/sonar-scanner/bin/sonar-scanner \
           -Dsonar.projectKey=security-implementation \
           -Dsonar.sources=app \
