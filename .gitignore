@@ -1,2 +1,5 @@
 # ngrok
 ngrok.log
+
+# SonarQube
+.scannerwork/

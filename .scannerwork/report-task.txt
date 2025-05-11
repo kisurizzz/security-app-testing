@@ -1,6 +1,0 @@
-projectKey=Security-Implementation
-serverUrl=http://localhost:9000
-serverVersion=25.5.0.107428
-dashboardUrl=http://localhost:9000/dashboard?id=Security-Implementation
-ceTaskId=9ab99fa6-6570-4180-8074-22b3127c64e8
-ceTaskUrl=http://localhost:9000/api/ce/task?id=9ab99fa6-6570-4180-8074-22b3127c64e8
