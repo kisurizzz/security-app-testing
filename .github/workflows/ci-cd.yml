@@ -48,21 +48,41 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Download SonarQube Scanner
+    - name: Download and Setup SonarQube Scanner
+      shell: bash
       run: |
+        # Install required dependencies
+        sudo apt-get update
+        sudo apt-get install -y unzip default-jre
+        
+        # Download and setup scanner
         wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
         unzip sonar-scanner-cli-4.8.0.2856-linux.zip
         sudo mv sonar-scanner-4.8.0.2856-linux /opt/sonar-scanner
+        
+        # Set permissions
+        sudo chmod +x /opt/sonar-scanner/bin/sonar-scanner
+        
+        # Add to PATH
         echo "/opt/sonar-scanner/bin" >> $GITHUB_PATH
+        
+        # Verify installation
         echo "Verifying sonar-scanner installation..."
+        ls -l /opt/sonar-scanner/bin/sonar-scanner
         /opt/sonar-scanner/bin/sonar-scanner --version
         
     - name: Run SonarQube Scanner
+      shell: bash
       env:
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        PATH: ${{ github.workspace }}/opt/sonar-scanner/bin:$PATH
+        PATH: /opt/sonar-scanner/bin:$PATH
+        JAVA_HOME: /usr/lib/jvm/default-java
       run: |
+        echo "Current PATH: $PATH"
+        echo "Current directory: $(pwd)"
+        echo "Scanner location: $(which sonar-scanner)"
+        
         /opt/sonar-scanner/bin/sonar-scanner \
           -Dsonar.projectKey=security-implementation \
           -Dsonar.sources=app \
