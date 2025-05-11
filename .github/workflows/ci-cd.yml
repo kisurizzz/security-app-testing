@@ -67,8 +67,11 @@ jobs:
         
     - name: Prepare ZAP reports directory
       run: |
+        # Create and set permissions for reports directory
         mkdir -p zap-reports
         chmod 777 zap-reports
+        # Ensure the directory is empty
+        rm -f zap-reports/*
         
     - name: Run OWASP ZAP DAST
       id: zap-scan
@@ -79,22 +82,22 @@ jobs:
         # If rules.tsv doesn't exist, create a simple one
         if [ ! -f .zap/rules.tsv ]; then
           echo "Creating default rules.tsv file"
-          echo "10016	IGNORE	(Modern Web Application)	" > .zap/rules.tsv
-          echo "10020	IGNORE	(X-Frame-Options header)	" >> .zap/rules.tsv
+          echo "10016	IGNORE	.*" > .zap/rules.tsv
+          echo "10020	IGNORE	.*" >> .zap/rules.tsv
         fi
         
         # Run ZAP scan with fixed configuration
         docker run --rm \
-          -v "$(pwd)/zap-reports:/zap/wrk/zap-reports:rw" \
+          -v "$(pwd)/zap-reports:/zap/wrk/:rw" \
           -v "$(pwd)/.zap/rules.tsv:/zap/rules.tsv:ro" \
           --network host \
           -t ghcr.io/zaproxy/zaproxy:stable \
           zap-baseline.py \
           -t http://localhost:5000 \
           -c /zap/rules.tsv \
-          -J /zap/wrk/zap-reports/report.json \
-          -w /zap/wrk/zap-reports/report.md \
-          -r /zap/wrk/zap-reports/report.html \
+          -J report.json \
+          -w report.md \
+          -r report.html \
           -a -I -j -d \
           -z "-config api.disablekey=true"
         
@@ -104,7 +107,15 @@ jobs:
         # Accept exit codes 0 (success) and 2 (warnings found)
         if [ $ZAP_EXIT_CODE -eq 0 ] || [ $ZAP_EXIT_CODE -eq 2 ]; then
           echo "ZAP scan completed with exit code $ZAP_EXIT_CODE"
-          exit 0
+          # Verify reports were created
+          if [ -f zap-reports/report.html ] && [ -f zap-reports/report.md ] && [ -f zap-reports/report.json ]; then
+            echo "All report files were generated successfully"
+            exit 0
+          else
+            echo "Some report files are missing:"
+            ls -la zap-reports/
+            exit 1
+          fi
         else
           echo "ZAP scan failed with exit code $ZAP_EXIT_CODE"
           exit 1
@@ -126,6 +137,7 @@ jobs:
         fi
         
     - name: Upload ZAP Reports
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: zap-reports
