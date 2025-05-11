@@ -48,15 +48,27 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Run SonarQube Scanner
+    - name: Download SonarQube Scanner
       run: |
-        docker run \
-          --rm \
-          --network host \
-          -e SONAR_HOST_URL="http://localhost:9000" \
-          -e SONAR_LOGIN="${{ secrets.SONAR_TOKEN }}" \
-          -v "$(pwd):/usr/src" \
-          sonarsource/sonarqube-scanner:latest
+        wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.10.0.2843-linux.zip
+        unzip sonar-scanner-cli-4.10.0.2843-linux.zip
+        sudo mv sonar-scanner-4.10.0.2843-linux /opt/sonar-scanner
+        echo "$GITHUB_WORKSPACE/opt/sonar-scanner/bin" >> $GITHUB_PATH
+        
+    - name: Run SonarQube Scanner
+      env:
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        sonar-scanner \
+          -Dsonar.projectKey=security-implementation \
+          -Dsonar.sources=app \
+          -Dsonar.tests=tests \
+          -Dsonar.python.coverage.reportPaths=coverage.xml \
+          -Dsonar.python.xunit.reportPath=test-results.xml \
+          -Dsonar.python.pylint.reportPath=pylint-report.txt \
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
   dast:
     needs: test
