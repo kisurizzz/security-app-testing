@@ -68,9 +68,23 @@ jobs:
       with:
         target: 'http://localhost:5000'
         rules_file_name: '.zap/rules.tsv'
-        cmd_options: '-a -t http://localhost:5000 -g gen.conf -r testreport.html'
+        cmd_options: '-a -t http://localhost:5000 -g gen.conf -r testreport.html -l DEBUG -I -j'
         docker_name: 'ghcr.io/zaproxy/zaproxy:stable'
         fail_action: false  # Don't fail the pipeline on ZAP findings
+        
+    - name: Debug - Check application and container status
+      run: |
+        echo "=== Application Status ==="
+        echo "Checking if application is still running..."
+        curl -v http://localhost:5000 || true
+        echo "=== Network Status ==="
+        netstat -tulpn | grep 5000 || true
+        echo "=== Process Status ==="
+        ps aux | grep python || true
+        echo "=== Docker Status ==="
+        docker ps -a
+        echo "=== Docker Logs ==="
+        docker logs $(docker ps -a -q --filter ancestor=ghcr.io/zaproxy/zaproxy:stable) 2>&1 || true
         
     - name: Check if ZAP report exists
       run: |
