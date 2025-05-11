@@ -3,6 +3,11 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.models import User, SearchableContent
 from app import db
 from sqlalchemy import or_, text
+from flask_wtf.csrf import CSRFProtect
+import bleach
+
+# Initialize CSRF protection
+csrf = CSRFProtect()
 
 # Sample data for search demonstration
 SAMPLE_DATA = [
@@ -39,20 +44,15 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        # Intentionally vulnerable SQL injection using raw SQL
-        query = text(f"SELECT * FROM user WHERE username='{username}' AND password='{password}'")
-        print(f"Executing SQL query: {query}")  # Debug output
-        try:
-            result = db.session.execute(query)
-            user = result.first()
-            print(f"Query result: {user}")  # Debug output
-            if user:
-                return f"Welcome {username}!"
-            else:
-                return "Invalid credentials", 401
-        except Exception as e:
-            print(f"Database error: {str(e)}")  # Debug output
-            return f"Database error: {str(e)}", 500
+        
+        # Use SQLAlchemy's parameterized queries to prevent SQL injection
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.password == password:  # In production, use proper password hashing
+            return f"Welcome {bleach.clean(username)}!"
+        else:
+            return "Invalid credentials", 401
+            
     return render_template('login.html')
 
 @main.route('/search')
@@ -61,12 +61,12 @@ def search():
     results = []
     
     if query:
-        # Search through the database using SQL LIKE
-        # Intentionally vulnerable to SQL injection
+        # Use parameterized queries to prevent SQL injection
+        sanitized_query = bleach.clean(query)
         results = SearchableContent.query.filter(
             or_(
-                SearchableContent.title.ilike(f'%{query}%'),
-                SearchableContent.description.ilike(f'%{query}%')
+                SearchableContent.title.ilike(f'%{sanitized_query}%'),
+                SearchableContent.description.ilike(f'%{sanitized_query}%')
             )
         ).all()
     
@@ -75,5 +75,6 @@ def search():
 @main.route('/echo')
 def echo():
     message = request.args.get('message', '')
-    # Intentionally vulnerable to XSS
-    return f"<h1>Echo: {message}</h1>"
+    # Sanitize output to prevent XSS
+    sanitized_message = bleach.clean(message)
+    return f"<h1>Echo: {sanitized_message}</h1>"

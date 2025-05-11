@@ -1,9 +1,13 @@
 # app/__init__.py
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_talisman import Talisman
+from flask_wtf.csrf import CSRFProtect
+import secrets
 
 # Initialize Flask extensions
 db = SQLAlchemy()
+csrf = CSRFProtect()
 
 def create_app():
     app = Flask(__name__, 
@@ -12,7 +16,32 @@ def create_app():
     
     # Configure the app
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
-    app.config['SECRET_KEY'] = 'your-secret-key'  # Intentionally weak for demo
+    app.config['SECRET_KEY'] = secrets.token_hex(32)  # Generate a secure secret key
+    app.config['WTF_CSRF_ENABLED'] = True
+    
+    # Initialize Talisman for security headers
+    Talisman(app,
+        content_security_policy={
+            'default-src': "'self'",
+            'script-src': "'self'",
+            'style-src': "'self'",
+            'img-src': "'self'",
+            'font-src': "'self'",
+        },
+        force_https=False,  # Set to True in production
+        strict_transport_security=True,
+        session_cookie_secure=True,
+        feature_policy={
+            'geolocation': "'none'",
+            'camera': "'none'",
+            'microphone': "'none'",
+            'payment': "'none'",
+            'usb': "'none'"
+        }
+    )
+    
+    # Initialize CSRF protection
+    csrf.init_app(app)
     
     # Initialize extensions with app
     db.init_app(app)
