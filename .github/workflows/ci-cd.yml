@@ -53,14 +53,17 @@ jobs:
         wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
         unzip sonar-scanner-cli-4.8.0.2856-linux.zip
         sudo mv sonar-scanner-4.8.0.2856-linux /opt/sonar-scanner
-        echo "$GITHUB_WORKSPACE/opt/sonar-scanner/bin" >> $GITHUB_PATH
+        echo "/opt/sonar-scanner/bin" >> $GITHUB_PATH
+        echo "Verifying sonar-scanner installation..."
+        /opt/sonar-scanner/bin/sonar-scanner --version
         
     - name: Run SonarQube Scanner
       env:
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        PATH: ${{ github.workspace }}/opt/sonar-scanner/bin:$PATH
       run: |
-        sonar-scanner \
+        /opt/sonar-scanner/bin/sonar-scanner \
           -Dsonar.projectKey=security-implementation \
           -Dsonar.sources=app \
           -Dsonar.tests=tests \
