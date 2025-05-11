@@ -67,6 +67,11 @@ jobs:
     - name: Run OWASP ZAP DAST
       id: zap-scan
       run: |
+        # Ensure zap-reports directory exists and is writable
+        mkdir -p zap-reports
+        chmod 777 zap-reports
+        
+        # Run ZAP scan with explicit report paths
         docker run --rm \
           -v "$(pwd)/zap-reports:/zap/wrk/:rw" \
           -v "$(pwd)/.zap/rules.tsv:/zap/rules.tsv:ro" \
@@ -75,16 +80,24 @@ jobs:
           zap-baseline.py \
           -t http://localhost:5000 \
           -c /zap/rules.tsv \
-          -J report.json \
-          -w report.md \
-          -r report.html \
+          -J /zap/wrk/report.json \
+          -w /zap/wrk/report.md \
+          -r /zap/wrk/report.html \
           -a -I -j -d \
           -z "-config api.disablekey=true"
         
         ZAP_EXIT_CODE=$?
         if [ $ZAP_EXIT_CODE -eq 0 ] || [ $ZAP_EXIT_CODE -eq 2 ]; then
           echo "ZAP scan completed with exit code $ZAP_EXIT_CODE"
-          exit 0
+          # Verify reports exist
+          if [ -f "zap-reports/report.html" ] && [ -f "zap-reports/report.md" ] && [ -f "zap-reports/report.json" ]; then
+            echo "Reports generated successfully"
+            ls -l zap-reports/
+          else
+            echo "Reports not found in zap-reports directory"
+            ls -la zap-reports/
+            exit 1
+          fi
         else
           echo "ZAP scan failed with exit code $ZAP_EXIT_CODE"
           exit 1
