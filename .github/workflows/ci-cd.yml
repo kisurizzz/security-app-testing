@@ -69,18 +69,20 @@ jobs:
         # Create reports directory
         mkdir -p zap-reports
         
-        # Run ZAP scan with custom configuration
+        # Run ZAP scan with basic configuration
         docker run --rm \
           -v $(pwd):/zap/wrk/:rw \
-          -v $(pwd)/.zap/zap.conf:/zap/zap.conf:ro \
+          -v $(pwd)/.zap/zap.conf:/zap/rules.tsv:ro \
+          --network host \
           -t ghcr.io/zaproxy/zaproxy:stable \
           zap-baseline.py \
           -t http://localhost:5000 \
-          -c /zap/zap.conf \
+          -c /zap/rules.tsv \
           -J zap-reports/report.json \
           -w zap-reports/report.md \
           -r zap-reports/report.html \
-          -a -I -j -d -T 10
+          -a -I -j -d -T 10 \
+          -z "-config api.disablekey=true -config database.recoverylog=false"
         
         # Check if scan completed successfully
         if [ $? -eq 0 ]; then
