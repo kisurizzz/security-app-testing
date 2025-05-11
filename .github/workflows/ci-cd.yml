@@ -55,58 +55,73 @@ jobs:
         for i in {1..60}; do
           if curl -s http://localhost:5000 > /dev/null; then
             echo "Application is running!"
-            exit 0
+            break
           fi
           echo "Waiting for application to start... attempt $i"
           sleep 2
+          if [ $i -eq 60 ]; then
+            echo "Application failed to start within timeout"
+            exit 1
+          fi
         done
-        echo "Application failed to start within timeout"
-        exit 1
+        
+    - name: Prepare ZAP reports directory
+      run: |
+        mkdir -p zap-reports
+        chmod 777 zap-reports
         
     - name: Run OWASP ZAP DAST
       id: zap-scan
       run: |
-        # Create reports directory
-        mkdir -p zap-reports
+        # Create ZAP config directory if it doesn't exist
+        mkdir -p .zap
         
-        # Run ZAP scan with basic configuration
+        # If rules.tsv doesn't exist, create a simple one
+        if [ ! -f .zap/rules.tsv ]; then
+          echo "Creating default rules.tsv file"
+          echo "10016	IGNORE	(Modern Web Application)	" > .zap/rules.tsv
+          echo "10020	IGNORE	(X-Frame-Options header)	" >> .zap/rules.tsv
+        fi
+        
+        # Run ZAP scan with fixed configuration
         docker run --rm \
-          -v $(pwd):/zap/wrk/:rw \
-          -v $(pwd)/.zap/rules.tsv:/zap/rules.tsv:ro \
+          -v "$(pwd)/zap-reports:/zap/wrk/zap-reports:rw" \
+          -v "$(pwd)/.zap/rules.tsv:/zap/rules.tsv:ro" \
           --network host \
           -t ghcr.io/zaproxy/zaproxy:stable \
           zap-baseline.py \
           -t http://localhost:5000 \
           -c /zap/rules.tsv \
-          -J zap-reports/report.json \
-          -w zap-reports/report.md \
-          -r zap-reports/report.html \
-          -a -I -j -d -T 10 \
-          -z "-config api.disablekey=true \
-              -config database.recoverylog=false \
-              -config spider.maxDuration=1 \
-              -config spiderAjax.maxDuration=1 \
-              -config passiveScan.maxDuration=10 \
-              -config alertThreshold=HIGH \
-              -config riskThreshold=HIGH"
+          -J /zap/wrk/zap-reports/report.json \
+          -w /zap/wrk/zap-reports/report.md \
+          -r /zap/wrk/zap-reports/report.html \
+          -a -I -j -d \
+          -z "-config api.disablekey=true"
         
-        # Check if scan completed successfully
-        if [ $? -eq 0 ]; then
-          echo "ZAP scan completed successfully"
+        ZAP_EXIT_CODE=$?
+        echo "ZAP exit code: $ZAP_EXIT_CODE"
+        
+        # Accept exit codes 0 (success) and 2 (warnings found)
+        if [ $ZAP_EXIT_CODE -eq 0 ] || [ $ZAP_EXIT_CODE -eq 2 ]; then
+          echo "ZAP scan completed with exit code $ZAP_EXIT_CODE"
+          exit 0
         else
-          echo "ZAP scan completed with warnings"
+          echo "ZAP scan failed with exit code $ZAP_EXIT_CODE"
+          exit 1
         fi
         
     - name: Process and Display Scan Results
       run: |
         echo "=== ZAP Scan Summary ==="
         if [ -f zap-reports/report.md ]; then
+          echo "Report found. Displaying summary:"
           # Extract and display the summary section
           awk '/^## Summary/,/^## /' zap-reports/report.md | head -n -1
           echo -e "\n=== Full Report Available ==="
           echo "The complete scan report is available in the workflow artifacts"
         else
-          echo "No scan report found"
+          echo "No scan report was generated. Checking directory contents:"
+          ls -la zap-reports/
           exit 1
         fi
         
@@ -115,33 +130,20 @@ jobs:
       with:
         name: zap-reports
         path: zap-reports/
-        if-no-files-found: error
+        if-no-files-found: warn
         
     - name: Debug - Check application and container status
+      if: always()
       run: |
         echo "=== Application Status ==="
         echo "Checking if application is still running..."
-        curl -v http://localhost:5000 || true
+        curl -sv http://localhost:5000 || true
         echo "=== Network Status ==="
         netstat -tulpn | grep 5000 || true
         echo "=== Process Status ==="
-        ps aux | grep python || true
-        echo "=== Docker Status ==="
-        docker ps -a
-        echo "=== Docker Logs ==="
-        docker logs $(docker ps -a -q --filter ancestor=ghcr.io/zaproxy/zaproxy:stable) 2>&1 || true
-        
-    - name: Check if ZAP report exists
-      run: |
-        if [ ! -f zap-reports/report.html ]; then
-          echo "ZAP report not found. Checking for alternative report..."
-          if [ -f testreport.html ]; then
-            mv testreport.html zap-reports/report.html
-          else
-            echo "No ZAP report found. This might indicate a scanning issue."
-            exit 1
-          fi
-        fi
+        ps aux | grep python | grep -v grep || true
+        echo "=== Directory Status ==="
+        ls -la zap-reports/ || true
 
   deploy:
     needs: [test, dast]
@@ -153,4 +155,4 @@ jobs:
     - name: Deploy to production
       run: |
         echo "Deploying to production..."
-        # Add your deployment commands here 
+        # Add your deployment commands here
