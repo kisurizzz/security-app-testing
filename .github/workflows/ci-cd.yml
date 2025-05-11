@@ -76,14 +76,18 @@ jobs:
       env:
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        PATH: /opt/sonar-scanner/bin:$PATH
         JAVA_HOME: /usr/lib/jvm/default-java
       run: |
+        # Debug environment
         echo "Current PATH: $PATH"
         echo "Current directory: $(pwd)"
-        echo "Scanner location: $(which sonar-scanner)"
+        ls -la /opt/sonar-scanner/bin
         
-        /opt/sonar-scanner/bin/sonar-scanner \
+        # Make the scanner script executable
+        chmod +x /opt/sonar-scanner/bin/sonar-scanner
+        
+        # Run with bash explicitly (no backslashes for line continuation)
+        bash /opt/sonar-scanner/bin/sonar-scanner \
           -Dsonar.projectKey=security-implementation \
           -Dsonar.sources=app \
           -Dsonar.tests=tests \
