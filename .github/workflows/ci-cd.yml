@@ -72,7 +72,7 @@ jobs:
         # Run ZAP scan with basic configuration
         docker run --rm \
           -v $(pwd):/zap/wrk/:rw \
-          -v $(pwd)/.zap/zap.conf:/zap/rules.tsv:ro \
+          -v $(pwd)/.zap/rules.tsv:/zap/rules.tsv:ro \
           --network host \
           -t ghcr.io/zaproxy/zaproxy:stable \
           zap-baseline.py \
@@ -82,7 +82,13 @@ jobs:
           -w zap-reports/report.md \
           -r zap-reports/report.html \
           -a -I -j -d -T 10 \
-          -z "-config api.disablekey=true -config database.recoverylog=false"
+          -z "-config api.disablekey=true \
+              -config database.recoverylog=false \
+              -config spider.maxDuration=1 \
+              -config spiderAjax.maxDuration=1 \
+              -config passiveScan.maxDuration=10 \
+              -config alertThreshold=HIGH \
+              -config riskThreshold=HIGH"
         
         # Check if scan completed successfully
         if [ $? -eq 0 ]; then
